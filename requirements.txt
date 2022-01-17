@@ -1,0 +1,14 @@
+torch==1.7.1
+transformers
+datasets
+numpy
+joblib
+nltk
+tqdm
+gensim
+pytorch-lightning
+ekphrasis
+tensorboard
+dateparser
+contextualized_topic_models
+concurrent_log_handler
