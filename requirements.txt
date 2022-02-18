@@ -12,3 +12,4 @@ tensorboard
 dateparser
 contextualized_topic_models
 concurrent_log_handler
+lightning-bolts

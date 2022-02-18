@@ -1,10 +1,16 @@
+from semantic_guided_neural_topic_model.utils import resources_dir
 from typing import Iterable
-
+from os.path import join
 import nltk.corpus.reader.wordnet as wn
 from gensim.corpora import Dictionary
 from nltk.stem import WordNetLemmatizer
 
+# lemmatizer
 lemmatizer = WordNetLemmatizer()
+
+# stopwords
+stopwords = None
+stopwords_path = join(resources_dir, "stopwords.txt")
 
 
 def read_raw_vocab(full_path):
@@ -23,7 +29,7 @@ def read_raw_vocab(full_path):
 
 def simple_lemmatize(token):
     token = token.strip()
-    if token <= 2:
+    if len(token) <= 2:
         return token
     n_lemma = lemmatizer.lemmatize(token, pos=wn.NOUN)
     if n_lemma != token:
@@ -38,3 +44,12 @@ def build_bow_vocab(texts: Iterable[Iterable[str]], no_below: int = 3, no_above:
     dictionary.filter_extremes(no_below=no_below, no_above=no_above, keep_n=keep_n, keep_tokens=keep_tokens)
     dictionary.compactify()
     return dictionary
+
+
+def get_stopwords():
+    global stopwords
+    if stopwords is None:
+        with open(stopwords_path) as in_file:
+            stopwords = [word.strip() for word in in_file]
+        stopwords = frozenset(stopwords)
+    return stopwords

@@ -3,6 +3,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+def reparameterize(mu, log_var):
+    std = torch.exp(log_var / 2)
+    eps = torch.randn_like(std)
+    z = mu + eps * std
+    return z
+
+
 class Encoder(nn.Module):
     def __init__(self, encode_dims=(2000, 100, 100, 50), dropout=0.2, affine=False):
         super().__init__()
@@ -47,16 +54,9 @@ class VAE(nn.Module):
         self.drop_theta = nn.Dropout(dropout)
         self.decoder = Decoder(decode_dims=decode_dims, affine=affine)
 
-    @staticmethod
-    def reparameterize(mu, log_var):
-        std = torch.exp(log_var / 2)
-        eps = torch.randn_like(std)
-        z = mu + eps * std
-        return z
-
     def forward(self, x_bow):
         mu, log_var = self.encoder(x_bow)
-        theta = self.reparameterize(mu, log_var)
+        theta = reparameterize(mu, log_var)
         theta = F.softmax(theta, dim=-1)
         theta = self.drop_theta(theta)
         x_bow_recon = self.decoder(theta)
@@ -126,11 +126,24 @@ class CVAE(nn.Module):
         self.contextual_decoder = ContextualDecoder(decode_dims=contextual_decode_dims)
         self.bow_decoder = BOWDecoder(decode_dims=bow_decode_dims)
 
-    def forward(self, x_ce, x_bow):
+    def forward(self, x_bow, x_ce):
         mu, log_var = self.encoder(x_bow, x_ce)
-        theta = self.reparameterize(mu, log_var)
+        theta = reparameterize(mu, log_var)
         theta = F.softmax(theta, dim=1)
         theta = self.drop_theta(theta)
-        ce_recon = self.contextual_decoder(theta)
         bow_recon = self.bow_decoder(theta)
-        return ce_recon, bow_recon, mu, log_var
+        ce_recon = self.contextual_decoder(theta)
+        return bow_recon, ce_recon, mu, log_var
+
+    def encode(self, x_bow, x_ce):
+        mu, _ = self.encoder(x_bow, x_ce)
+        theta = F.softmax(mu, dim=-1)
+        return theta
+
+    def decode(self, theta):
+        bow_recon = self.bow_decoder(theta)
+        return bow_recon
+
+    def decode_to_ce(self, theta):
+        ce_recon = self.contextual_decoder(theta)
+        return ce_recon

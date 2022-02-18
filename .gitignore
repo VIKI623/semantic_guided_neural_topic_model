@@ -127,3 +127,20 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# data
+semantic_guided_neural_topic_model/source
+semantic_guided_neural_topic_model/data/*
+
+# output
+semantic_guided_neural_topic_model/output/*
+
+# log
+semantic_guided_neural_topic_model/logs/*
+
+# ide config
+.idea
+.vscode
+
+# run script
+semantic_guided_neural_topic_model/experiments/*

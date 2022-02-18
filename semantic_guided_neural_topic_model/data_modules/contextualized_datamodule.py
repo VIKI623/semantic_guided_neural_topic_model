@@ -1,4 +1,5 @@
 from os.path import basename, join, exists
+from typing import Optional
 
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
@@ -7,7 +8,8 @@ from semantic_guided_neural_topic_model.data_modules.utils import load_bow_and_s
 
 
 class ContextualizedDataModule(LightningDataModule):
-    def __init__(self, sentence_bert_model_name: str, dataset_dir: str, batch_size: int = 256, num_workers: int = 4):
+    def __init__(self, sentence_bert_model_name: str, dataset_dir: str, batch_size: int = 256,
+                 normalization: Optional[str] = None, num_workers: int = 4):
         super().__init__()
         self.sentence_bert_model_name = sentence_bert_model_name
         self.data_dir = dataset_dir
@@ -21,9 +23,10 @@ class ContextualizedDataModule(LightningDataModule):
 
         self.dataset, self.config, self.id2token = load_bow_and_sentence_embedding(
             sentence_bert_model_name=self.sentence_bert_model_name, raw_json_file=self.raw_json_file,
-            raw_vocab_file=self.raw_vocab_file
-        )
+            raw_vocab_file=self.raw_vocab_file, normalization=normalization)
         self.dataset.set_format(type='torch', columns=['bow', 'contextual'])
+
+        self.contextual_dim = self.config.hidden_size
 
     def train_dataloader(self):
         return DataLoader(self.dataset, batch_size=256, shuffle=True, num_workers=self.num_workers)

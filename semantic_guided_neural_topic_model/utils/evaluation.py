@@ -45,7 +45,7 @@ def get_topic_coherence_batch(topics: Sequence[Sequence[str]], coherence_types: 
                 logger.error(str(e))
         return float(r.text)
 
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    with ThreadPoolExecutor(max_workers=4) as executor:
         scores = list(executor.map(query_for_topic_coherence, request_urls))
 
     # build return value
