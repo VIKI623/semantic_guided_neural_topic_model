@@ -1,21 +1,7 @@
-import joblib
 import torch
 import json
 from typing import Iterable, Dict, Any
-
-
-def save_object_to_file(obj, full_path):
-    with open(full_path, 'wb') as f:
-        joblib.dump(obj, f)
-
-
-def restore_object_from_file(full_path):
-    try:
-        with open(full_path, 'rb') as f:
-            obj = joblib.load(f)
-    except FileNotFoundError:
-        return None
-    return obj
+import os
 
 
 def save_json(full_path, data, indent=4):
@@ -69,3 +55,8 @@ def read_jsons(full_path: str):
             obj = json.loads(line.strip())
             objs.append(obj)
     return objs
+
+
+def mkdirs(full_path: str):
+    if not os.path.exists(full_path):
+        os.makedirs(full_path)

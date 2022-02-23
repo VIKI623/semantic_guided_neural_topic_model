@@ -12,7 +12,6 @@ from semantic_guided_neural_topic_model.lightning_modules import ProdLDA
 from semantic_guided_neural_topic_model.utils import output_dir, data_dir
 from semantic_guided_neural_topic_model.utils.persistence import save_json
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 seed_everything(seed=42)
 model_name = "prodlda"
 
@@ -31,8 +30,8 @@ if __name__ == '__main__':
     parser.add_argument('-hd', '--encoder_hidden_dim', help='encoder hidden dim', type=int, default=100)
     parser.add_argument('-do', '--dropout', help='dropout rate', type=float, default=0.2)
     parser.add_argument('-m', '--metric', help='coherence evaluation metric', type=str,
-                        choices=('ca', 'cp', 'npmi', 'cv'), default='npmi')
-    parser.add_argument('-v', '--version', help='version name to log', type=str, default='0117-2222')
+                         default='c_npmi')
+    parser.add_argument('-v', '--version', help='version name to log', type=str, default='0221-19')
     parser.add_argument('-en', '--epoch_num', help='epoch num', type=int, default=200)
 
     args = parser.parse_args()
@@ -47,21 +46,25 @@ if __name__ == '__main__':
     # dataset_name = args.dataset_name
     # topic_num = args.topic_num
 
-    dataset_names = (
-        'tag_my_news',)
-    topic_nums = (50, 75, 100)
+    dataset_names = ('20_news_group', '5234_event_tweets', 'tag_my_news',)
+    topic_nums = (20, 30, 50, 75, 100)
 
     for dataset_name in dataset_names:
         for topic_num in topic_nums:
-            print(f"\ndataset:{dataset_name} | topic_num:{topic_num}")
+            
+            print("*" * 100)
+            print(f"\ndataset:{dataset_name} | topic_num:{topic_num} | {model_name}\n")
+            print("*" * 100)
+            
             # data
             dataset_dir = join(data_dir, dataset_name)
             data_module = BOWDataModule(dataset_dir=dataset_dir, batch_size=batch_size, normalization=normalization)
             save_dir = join(output_dir, dataset_name, str(topic_num))
 
             # model
-            model = ProdLDA(id2token=data_module.id2token, encoder_hidden_dim=encoder_hidden_dim, topic_num=topic_num,
-                            dropout=dropout, affine=False, alpha=None, metric=metric)
+            model = ProdLDA(id2token=data_module.id2token, reference_texts=data_module.dataset['text_for_bow'], 
+                            encoder_hidden_dim=encoder_hidden_dim, topic_num=topic_num, dropout=dropout, affine=False, 
+                            alpha=None, metric=metric)
 
             # logger
             tb_logger = pl_loggers.TensorBoardLogger(save_dir=save_dir, name=model_name, version=version)

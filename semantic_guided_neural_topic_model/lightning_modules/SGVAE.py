@@ -1,14 +1,10 @@
-from typing import Any, Optional, Callable, Union, Mapping
-
+from typing import Any, Optional, Callable, Union, Mapping, Sequence
 import torch
 import torch.nn.functional as F
-from pytorch_lightning import LightningModule
-
 from semantic_guided_neural_topic_model.lightning_modules.ProdLDA import alpha_and_topic_num_to_prior, compute_kl_loss, \
     get_topics, cross_entropy
 from semantic_guided_neural_topic_model.torch_modules.VAE import CVAE
-from semantic_guided_neural_topic_model.utils.evaluation import get_topic_coherence_batch, BestCoherenceScore
-
+from semantic_guided_neural_topic_model.lightning_modules.Base import NeuralTopicModelEvaluable
 
 def choice_ce_loss_func(ce_loss_choice: Union[Callable, str] = "MSE"):
     if isinstance(ce_loss_choice, Callable):
@@ -27,14 +23,14 @@ def choice_ce_loss_func(ce_loss_choice: Union[Callable, str] = "MSE"):
     return ce_loss
 
 
-class SGVAE(LightningModule):
-    def __init__(self, id2token: Mapping[int, str], encoder_hidden_dim=100, topic_num=50, contextual_dim=768, dropout=0.2,
-                 ce_loss="MSE", affine=False, alpha=None, metric='npmi'):
-        super().__init__()
+class SGVAE(NeuralTopicModelEvaluable):
+    def __init__(self, id2token: Mapping[int, str], reference_texts: Sequence[Sequence[str]], encoder_hidden_dim=100, 
+                 topic_num=50, contextual_dim=768, dropout=0.2, ce_loss="MSE", affine=False, alpha=None, metric='c_npmi'):
+        super().__init__(id2token=id2token, reference_texts=reference_texts, metric=metric)
+        
         self.save_hyperparameters()
 
         self.automatic_optimization = True
-        self.id2token = id2token
         self.topic_num = topic_num
         vocab_size = len(id2token)
 
@@ -52,15 +48,12 @@ class SGVAE(LightningModule):
         # ce loss func
         self.ce_loss_func = choice_ce_loss_func(ce_loss_choice=ce_loss)
 
-        # score_recorder
-        self.best_coherence_score = BestCoherenceScore(metric=metric)
-
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.model.parameters(), lr=0.002, betas=(0.99, 0.999))
         return optimizer
 
     def forward(self, x_bow, x_ce):
-        return self.model.encoder(x_bow, x_ce)
+        return self.model.encode(x_bow, x_ce)
 
     def on_train_start(self) -> None:
         self.prior_mu = self.prior_mu.to(self.device)
@@ -102,19 +95,3 @@ class SGVAE(LightningModule):
             topic_word_dist = torch.softmax(topic_word_dist, dim=-1)
             topics = get_topics(topic_word_dist, top_k, self.id2token)
         return topics
-
-    def validation_step(self, batch, batch_idx):
-        pass
-
-    def validation_epoch_end(self, validation_step_outputs):
-        topic = self.get_topics()
-        coherence = get_topic_coherence_batch(topic)
-        metric = self.best_coherence_score.metric
-        self.best_coherence_score.coherence = coherence
-
-        # log score
-        self.log('topic_scores', coherence['average_scores'])
-        self.log(metric, coherence['average_scores'][metric])
-
-    def get_best_coherence_score(self):
-        return self.best_coherence_score.coherence

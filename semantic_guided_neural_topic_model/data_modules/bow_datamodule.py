@@ -14,7 +14,7 @@ class BOWDataModule(LightningDataModule):
         config data arguments
         :param dataset_dir: the directory containing {dataset_name}.json
         :param batch_size: batch size
-        :param normalization: bow representation normalization method: ("average", "tfidf"， None)
+        :param normalization: bow representation normalization method: ("average", "tfidf", None)
         """
         super().__init__()
         self.data_dir = dataset_dir

@@ -1,5 +1,4 @@
 from os.path import join, dirname, abspath
-
 from .log import logger
 
 utils_dir = dirname(abspath(__file__))

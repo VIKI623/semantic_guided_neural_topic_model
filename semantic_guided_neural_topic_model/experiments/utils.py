@@ -3,7 +3,8 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 # experimenr variables
 dataset_names = (
     '20_news_group',
-    'tag_my_news')
+    'tag_my_news',
+    '5234_event_tweets')
 topic_nums = (20, 30, 50, 75, 100)
 
 
