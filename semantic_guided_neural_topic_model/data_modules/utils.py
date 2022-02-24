@@ -23,7 +23,7 @@ def bow_to_clean_bow(text_for_bow: Iterable[str], token2id: Mapping[str, int]) -
     return [word for word in text_for_bow if word in token2id]
 
 
-def load_bow(raw_json_file: str = None, raw_vocab_file: str = None, normalization: Optional[str] = None, batch_size: int = 64):
+def load_text_and_vocab(raw_json_file: str = None, raw_vocab_file: str = None):
     dataset = load_dataset('json', data_files=raw_json_file)['train']
 
     if raw_json_file:
@@ -31,7 +31,7 @@ def load_bow(raw_json_file: str = None, raw_vocab_file: str = None, normalizatio
     else:
         dictionary = build_bow_vocab(texts=dataset["text_for_bow"])
         id2token, token2id = dict(dictionary), dict(dictionary.token2id)
-
+        
     # remove word not in dictionary
     bow_to_clean_bow_with_vocab = partial(bow_to_clean_bow, token2id=token2id)
     dataset = dataset.map(lambda item: {"text_for_bow": bow_to_clean_bow_with_vocab(item["text_for_bow"])},
@@ -40,7 +40,14 @@ def load_bow(raw_json_file: str = None, raw_vocab_file: str = None, normalizatio
     # filter by text_for_bow length
     dataset = filter_dataset_by_attribute_value_length(
         dataset, attribute_key="text_for_bow", no_below=2)
+        
+    return dataset, id2token, token2id
+    
 
+
+def load_bow(raw_json_file: str = None, raw_vocab_file: str = None, normalization: Optional[str] = None, batch_size: int = 64):
+    dataset, id2token, token2id = load_text_and_vocab(raw_json_file, raw_vocab_file)
+    
     # map text_for_bow to bow
     handlers = [('bow', CountVectorizer(vocabulary=token2id)), ]
     if normalization and normalization.lower() == 'tfidf':
@@ -60,7 +67,7 @@ def load_bow_and_sentence_embedding(sentence_bert_model_name: str = None, raw_js
     config = load_config(sentence_bert_model_name)
 
     dataset_with_bow, id2token = load_bow(
-        raw_json_file, raw_vocab_file, normalization)
+        raw_json_file, raw_vocab_file, normalization, batch_size)
 
     # map text_for_contextual to contextual embedding
     def batch_map(batch):
