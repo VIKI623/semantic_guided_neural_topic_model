@@ -23,7 +23,7 @@ if __name__ == '__main__':
     parser.add_argument('-dn', '--dataset_name', help='dataset name', type=str, choices=('20_news_group',
                                                                                          '5234_event_tweets',
                                                                                          'tag_my_news',
-                                                                                         'covid19_twitter'),
+                                                                                         ),
                         default='20_news_group')
     parser.add_argument('-bs', '--batch_size', help='batch size', type=int, default=256)
     parser.add_argument('-tn', '--topic_num', help='topic num', type=int, default=20)

@@ -11,8 +11,8 @@ from semantic_guided_neural_topic_model.utils.log import logger
 
 palmetto_endpoint = r"http://127.0.0.1:7777/service/{}?words={}"
 
-all_external_coherence_types = ("ca", "cp", "npmi", "cv", "uci", "umass")
-all_internal_coherence_types = ("c_v", "c_uci", "c_npmi", "u_mass", "c_w2v")
+all_external_coherence_types = ("ca", "cp", "npmi", "cv", "uci")
+all_internal_coherence_types = ("c_v", "c_uci", "c_npmi")
 
 # const_key
 AVERAGE_SCORES = "average_scores"

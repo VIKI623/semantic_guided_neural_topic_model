@@ -1,3 +1,5 @@
 from .ProdLDA import ProdLDA
+from .BAT import BAT, VanillaBAT
 from .SGVAE import SGVAE
-from .BAT import BAT
+from .CTM import CTM
+
