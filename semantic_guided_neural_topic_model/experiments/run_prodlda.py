@@ -7,7 +7,7 @@ from pytorch_lightning import seed_everything
 from pytorch_lightning.trainer import Trainer
 
 from semantic_guided_neural_topic_model.data_modules import BOWDataModule
-from semantic_guided_neural_topic_model.experiments.utils import configure_model_checkpoints
+from semantic_guided_neural_topic_model.experiments.utils import configure_model_checkpoints, dataset_names, topic_nums
 from semantic_guided_neural_topic_model.lightning_modules import ProdLDA
 from semantic_guided_neural_topic_model.utils import output_dir, data_dir
 from semantic_guided_neural_topic_model.utils.persistence import save_json
