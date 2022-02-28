@@ -1,5 +1,4 @@
 import argparse
-import os
 from os.path import join
 
 from pytorch_lightning import loggers as pl_loggers
@@ -37,7 +36,7 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--metric', help='coherence evaluation metric', type=str,
                         default='c_npmi')
     parser.add_argument(
-        '-v', '--version', help='version name to log', type=str, default='0221-19')
+        '-v', '--version', help='version name to log', type=str, default='0224-23')
     parser.add_argument('-en', '--epoch_num',
                         help='epoch num', type=int, default=200)
 
@@ -53,14 +52,22 @@ if __name__ == '__main__':
     # dataset_name = args.dataset_name
     # topic_num = args.topic_num
 
-    dataset_names = ('5234_event_tweets',)
-    topic_nums = (100,)
+    # dataset_names = ('20_news_group',
+    #                  '5234_event_tweets',
+    #                 #  'tag_my_news',
+    #                  )
+    # topic_nums = (20, 30, 50)
+    # topic_nums = (75, 100)
+    
+    dataset_names = ('tag_my_news',)
+    topic_nums = (100, )
 
     for dataset_name in dataset_names:
         for topic_num in topic_nums:
 
             print("*" * 100)
-            print(f"\ndataset: {dataset_name} | topic_num: {topic_num} | model_name: {model_name}\n")
+            print(
+                f"\ndataset: {dataset_name} | topic_num: {topic_num} | model_name: {model_name}\n")
             print("*" * 100)
 
             # data

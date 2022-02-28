@@ -21,10 +21,10 @@ class Generator(nn.Module):
 
 
 class GaussianGenerator(nn.Module):
-    def __init__(self, num_topics, word_vectors):
+    def __init__(self, num_topics, word_vectors, word_vectors_trainable=False):
         super().__init__()
 
-        self.word_vectors = word_vectors.unsqueeze(1)  # -> (vocab_size, 1, vector_size)
+        self.word_vectors = nn.Parameter(word_vectors.unsqueeze(1), requires_grad=word_vectors_trainable)  # -> (vocab_size, 1, vector_size)
         vocab_size, vector_size = word_vectors.shape
 
         self.mu = nn.Parameter(torch.randn(num_topics, vector_size))

@@ -88,8 +88,7 @@ def get_internal_topic_coherence_batch(topics: Sequence[Sequence[str]], referenc
             }
 
 def get_topics_diversity(topics: Sequence[Sequence[str]]):
-    diversity = len(set(word for topic in topics for word in topic)
-                ) / sum(len(topic) for topic in topics)
+    diversity = len(set(word for topic in topics for word in topic)) / sum(len(topic) for topic in topics)
     return diversity
 
 

@@ -28,7 +28,7 @@ class BAT(NeuralTopicModelEvaluable):
         if gaussian_generator:
             tokens = (id2token[token_id] for token_id in range(vocab_size))
             word2vec = get_vecs_by_tokens(tokens)
-            self.generator = GaussianGenerator(topic_num, word2vec)
+            self.generator = GaussianGenerator(topic_num, word2vec, word_vectors_trainable=False)
         else:
             self.generator = Generator(
                 topic_num, hidden_dim, vocab_size, negative_slope)
