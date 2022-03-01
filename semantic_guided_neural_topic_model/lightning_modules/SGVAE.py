@@ -95,3 +95,10 @@ class SGVAE(NeuralTopicModelEvaluable):
             topic_word_dist = torch.softmax(topic_word_dist, dim=-1)
             topics = get_topics(topic_word_dist, top_k, self.id2token)
         return topics
+    
+    def get_topic_contextual_embeddings(self):
+        self.model.eval()
+        with torch.no_grad():
+            idxes = torch.eye(self.topic_num).to(self.device)
+            topic_contextual_embeddings = self.model.decode_to_ce(idxes)
+        return topic_contextual_embeddings

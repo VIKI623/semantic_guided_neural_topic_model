@@ -2,7 +2,7 @@ import torch
 import json
 from typing import Iterable, Dict, Any
 import os
-
+import pickle as pkl
 
 def save_json(full_path, data, indent=4):
     with open(full_path, 'w', encoding='utf-8') as f:
@@ -60,3 +60,13 @@ def read_jsons(full_path: str):
 def mkdirs(full_path: str):
     if not os.path.exists(full_path):
         os.makedirs(full_path)
+        
+        
+def save_obj(full_path, model):
+    with open(full_path, "wb") as file:
+        pkl.dump(model, file)
+
+def load_obj(full_path):
+    with open(full_path, "rb") as file:
+        model = pkl.load(file)
+    return model

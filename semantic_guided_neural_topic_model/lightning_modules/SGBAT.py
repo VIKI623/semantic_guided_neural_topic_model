@@ -5,12 +5,13 @@ from torch.optim.lr_scheduler import StepLR
 from semantic_guided_neural_topic_model.lightning_modules.ProdLDA import get_topics
 from semantic_guided_neural_topic_model.pretrain_modules.word2vec import get_vecs_by_tokens
 from semantic_guided_neural_topic_model.lightning_modules.Base import NeuralTopicModelEvaluable
-from semantic_guided_neural_topic_model.torch_modules.GAN import Encoder, Generator, Discriminator, GaussianGenerator
+from semantic_guided_neural_topic_model.torch_modules.GAN import ContextualizedEncoder, Generator, Discriminator, GaussianGenerator
+from semantic_guided_neural_topic_model.torch_modules.VAE import ContextualDecoder
 
 
-class BAT(NeuralTopicModelEvaluable):
-    def __init__(self, id2token: Mapping[int, str], reference_texts: Sequence[Sequence[str]], hidden_dim=100, topic_num=50, negative_slope=0.1,
-                 alpha=None, metric='c_npmi', gaussian_generator=False):
+class SGBAT(NeuralTopicModelEvaluable):
+    def __init__(self, id2token: Mapping[int, str], reference_texts: Sequence[Sequence[str]], hidden_dim=100, topic_num=50,
+                 contextual_dim=768, negative_slope=0.1, alpha=None, metric='c_npmi', gaussian_generator=False):
         super().__init__(id2token=id2token, reference_texts=reference_texts, metric=metric)
 
         self.save_hyperparameters()
@@ -28,14 +29,18 @@ class BAT(NeuralTopicModelEvaluable):
         if gaussian_generator:
             tokens = (id2token[token_id] for token_id in range(vocab_size))
             word2vec = get_vecs_by_tokens(tokens)
-            self.generator = GaussianGenerator(topic_num, word2vec, word_vectors_trainable=False)
+            self.generator = GaussianGenerator(
+                topic_num, word2vec, word_vectors_trainable=False)
         else:
             self.generator = Generator(
                 topic_num, hidden_dim, vocab_size, negative_slope)
-        self.encoder = Encoder(topic_num, hidden_dim,
-                               vocab_size, negative_slope)
+        self.encoder = ContextualizedEncoder(topic_num, hidden_dim,
+                                             vocab_size, contextual_dim, negative_slope)
         self.discriminator = Discriminator(
-            topic_num + vocab_size, hidden_dim, negative_slope)
+            topic_num + vocab_size + contextual_dim, hidden_dim, negative_slope)
+
+        self.topic_to_ce = ContextualDecoder(
+            decode_dims=(topic_num, contextual_dim))
 
     def configure_optimizers(self):
         learning_rate = 1e-4
@@ -44,11 +49,13 @@ class BAT(NeuralTopicModelEvaluable):
         if isinstance(self.generator, GaussianGenerator):
             g_optimizer = torch.optim.Adam([
                 {'params': self.generator.parameters(), 'lr': learning_rate * 10},
-                {'params': self.encoder.parameters(), 'lr': learning_rate}
+                {'params': self.encoder.parameters(), 'lr': learning_rate},
+                {'params': self.topic_to_ce.parameters(), 'lr': learning_rate},
             ], betas=betas)
         else:
             g_optimizer = torch.optim.Adam(list(self.generator.parameters(
-            )) + list(self.encoder.parameters()), lr=learning_rate, betas=betas)
+            )) + list(self.encoder.parameters()) + list(self.topic_to_ce.parameters()),
+                lr=learning_rate, betas=betas)
 
         d_optimizer = torch.optim.Adam(
             self.discriminator.parameters(), lr=learning_rate, betas=betas)
@@ -62,13 +69,15 @@ class BAT(NeuralTopicModelEvaluable):
         g_scheduler, d_scheduler = self.lr_schedulers()
 
         x_bow = batch['bow']
+        x_ce = batch['contextual']
         theta = self.sampler.sample((len(x_bow),)).to(self.device)
-        
+
         word_dist = self.generator(theta)
-        fake_repr = torch.cat([theta, word_dist], dim=1)
-        
-        topic_proportion = self.encoder(x_bow)
-        real_repr = torch.cat([topic_proportion, x_bow], dim=1)
+        ce = self.topic_to_ce(theta)
+        fake_repr = torch.cat([theta, word_dist, ce], dim=1)
+
+        topic_proportion = self.encoder(x_bow, x_ce)
+        real_repr = torch.cat([topic_proportion, x_bow, x_ce], dim=1)
 
         n_d = 5
         c = .01
@@ -116,3 +125,10 @@ class BAT(NeuralTopicModelEvaluable):
             topic_word_dist = self.generator(idxes)
             topics = get_topics(topic_word_dist, top_k, self.id2token)
         return topics
+    
+    def get_topic_contextual_embeddings(self):
+        self.topic_to_ce.eval()
+        with torch.no_grad():
+            idxes = torch.eye(self.topic_num).to(self.device)
+            topic_contextual_embeddings = self.topic_to_ce(idxes)
+        return topic_contextual_embeddings

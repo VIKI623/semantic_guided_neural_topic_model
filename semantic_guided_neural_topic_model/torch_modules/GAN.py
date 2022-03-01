@@ -16,15 +16,16 @@ class Generator(nn.Module):
         )
 
     def forward(self, sampled_x):
-        hid = self.model(sampled_x)
-        return torch.cat([sampled_x, hid], dim=1)
+        word_dist = self.model(sampled_x)
+        return word_dist
 
 
 class GaussianGenerator(nn.Module):
     def __init__(self, num_topics, word_vectors, word_vectors_trainable=False):
         super().__init__()
 
-        self.word_vectors = nn.Parameter(word_vectors.unsqueeze(1), requires_grad=word_vectors_trainable)  # -> (vocab_size, 1, vector_size)
+        self.word_vectors = nn.Parameter(word_vectors.unsqueeze(
+            1), requires_grad=word_vectors_trainable)  # -> (vocab_size, 1, vector_size)
         vocab_size, vector_size = word_vectors.shape
 
         self.mu = nn.Parameter(torch.randn(num_topics, vector_size))
@@ -36,12 +37,13 @@ class GaussianGenerator(nn.Module):
         self.vocab_size = vocab_size
 
     def forward(self, sampled_x):
-        multi_normal = LowRankMultivariateNormal(self.mu, self.cov_factor, self.cov_diag)
+        multi_normal = LowRankMultivariateNormal(
+            self.mu, self.cov_factor, self.cov_diag)
         topic_word_dist = multi_normal.log_prob(self.word_vectors).t()
 
         topic_word_dist = F.softmax(topic_word_dist, dim=-1)
         word_dist = torch.mm(sampled_x, topic_word_dist)
-        return torch.cat([sampled_x, word_dist], dim=1)
+        return word_dist
 
     def clamp_cov_diag(self, min_val=1e-6):
         with torch.no_grad():
@@ -51,6 +53,7 @@ class GaussianGenerator(nn.Module):
 class Encoder(nn.Module):
     def __init__(self, topic_num, embedding_dim, vocab_size, negative_slope=0.1):
         super().__init__()
+
         self.model = nn.Sequential(
             nn.Linear(vocab_size, embedding_dim, bias=False),
             nn.BatchNorm1d(embedding_dim),
@@ -60,15 +63,29 @@ class Encoder(nn.Module):
         )
 
     def forward(self, doc_x):
-        hid = self.model(doc_x)
-        return torch.cat([hid, doc_x], dim=1)
+        topic_proportion = self.model(doc_x)
+        return topic_proportion
+
+
+class ContextualizedEncoder(nn.Module):
+    def __init__(self, topic_num, embedding_dim, vocab_size, contextual_dim, negative_slope=0.1):
+        super().__init__()
+        self.adapt_bert = nn.Linear(contextual_dim, vocab_size)
+        self.encoder = Encoder(topic_num=topic_num, embedding_dim=embedding_dim, vocab_size=vocab_size * 2,
+                               negative_slope=negative_slope)
+
+    def forward(self, x_bow, x_ce):
+        x_ce = self.adapt_bert(x_ce)
+        x = torch.cat((x_bow, x_ce), dim=-1)
+        topic_proportion = self.encoder(x)
+        return topic_proportion
 
 
 class Discriminator(nn.Module):
-    def __init__(self, topic_num, embedding_dim, vocab_size, negative_slope=0.1):
+    def __init__(self, input_dim, embedding_dim, negative_slope=0.1):
         super().__init__()
         self.model = nn.Sequential(
-            nn.Linear(topic_num + vocab_size, embedding_dim, bias=False),
+            nn.Linear(input_dim, embedding_dim, bias=False),
             nn.BatchNorm1d(embedding_dim),
             nn.LeakyReLU(negative_slope=negative_slope),
             nn.Linear(embedding_dim, 1)
