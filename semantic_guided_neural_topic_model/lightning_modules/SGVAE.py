@@ -46,7 +46,10 @@ class SGVAE(NeuralTopicModelEvaluable):
                           contextual_dim=contextual_dim, dropout=dropout, affine=affine)
 
         # ce loss func
-        self.ce_loss_func = choice_ce_loss_func(ce_loss_choice=ce_loss)
+        if ce_loss == "INFONCE":
+            self.ce_loss_func = self.info_nce
+        else:
+            self.ce_loss_func = choice_ce_loss_func(ce_loss_choice=ce_loss)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.model.parameters(), lr=0.002, betas=(0.99, 0.999))
@@ -102,3 +105,16 @@ class SGVAE(NeuralTopicModelEvaluable):
             idxes = torch.eye(self.topic_num).to(self.device)
             topic_contextual_embeddings = self.model.decode_to_ce(idxes)
         return topic_contextual_embeddings
+    
+    def info_nce(self, ce_recon, ce, temperature=0.05):
+        # ce_recon, ce: (batch_size, contextual_dim)
+        batch_size = ce_recon.shape[0]
+        y_true = torch.arange(batch_size).to(self.device)
+        
+        ce_recon = F.normalize(ce_recon, dim=1, p=2)
+        ce = F.normalize(ce, dim=1, p=2)
+        sim_score = torch.matmul(ce_recon, ce.transpose(0,1))
+        sim_score = sim_score / temperature
+        
+        loss = F.cross_entropy(sim_score, y_true, reduction='sum')
+        return loss
