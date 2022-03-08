@@ -6,27 +6,13 @@ from semantic_guided_neural_topic_model.lightning_modules.ProdLDA import alpha_a
 from semantic_guided_neural_topic_model.torch_modules.VAE import CVAE
 from semantic_guided_neural_topic_model.lightning_modules.Base import NeuralTopicModelEvaluable
 
-def choice_ce_loss_func(ce_loss_choice: Union[Callable, str] = "MSE"):
-    if isinstance(ce_loss_choice, Callable):
-        return ce_loss_choice
-
-    ce_loss_choice = ce_loss_choice.upper()
-    if ce_loss_choice == "RMSE":
-        def ce_loss(ce_recon, x_ce):
-            return torch.sum(torch.sqrt(F.mse_loss(ce_recon, x_ce, reduction='none')))
-    elif ce_loss_choice == "COS":
-        def ce_loss(ce_recon, x_ce):
-            return F.cosine_embedding_loss(ce_recon, x_ce, target=torch.ones(len(x_ce)), reduction='sum')
-    else:
-        def ce_loss(ce_recon, x_ce):
-            return F.mse_loss(ce_recon, x_ce, reduction='sum')
-    return ce_loss
-
 
 class SGVAE(NeuralTopicModelEvaluable):
     def __init__(self, id2token: Mapping[int, str], reference_texts: Sequence[Sequence[str]], encoder_hidden_dim=100, 
-                 topic_num=50, contextual_dim=768, dropout=0.2, ce_loss="MSE", affine=False, alpha=None, metric='c_npmi'):
-        super().__init__(id2token=id2token, reference_texts=reference_texts, metric=metric)
+                 topic_num=50, contextual_dim=768, dropout=0.2, ce_loss="MSE", ce_loss_coef=1.0, affine=False, alpha=None, 
+                 metric='c_npmi'):
+        
+        super().__init__(id2token=id2token, reference_texts=reference_texts, metric=metric, exclude_external=True)
         
         self.save_hyperparameters()
 
@@ -47,9 +33,14 @@ class SGVAE(NeuralTopicModelEvaluable):
 
         # ce loss func
         if ce_loss == "INFONCE":
-            self.ce_loss_func = self.info_nce
-        else:
-            self.ce_loss_func = choice_ce_loss_func(ce_loss_choice=ce_loss)
+            self.ce_loss_func = self.infonce_loss
+        elif ce_loss == "COS":
+            self.ce_loss_func = self.cos_loss
+        elif ce_loss == "MSE":
+            self.ce_loss_func = self.mse_loss
+            
+        # ce loss coef
+        self.ce_loss_coef = ce_loss_coef
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.model.parameters(), lr=0.002, betas=(0.99, 0.999))
@@ -71,7 +62,7 @@ class SGVAE(NeuralTopicModelEvaluable):
 
         # calculate loss
         bow_rec_loss = cross_entropy(bow_recon, x_bow)
-        ce_rec_loss = self.ce_loss_func(ce_recon, x_ce)
+        ce_rec_loss = self.ce_loss_coef * self.ce_loss_func(ce_recon, x_ce)
 
         # calculate kld
         var = torch.exp(log_var)
@@ -106,7 +97,7 @@ class SGVAE(NeuralTopicModelEvaluable):
             topic_contextual_embeddings = self.model.decode_to_ce(idxes)
         return topic_contextual_embeddings
     
-    def info_nce(self, ce_recon, ce, temperature=0.05):
+    def infonce_loss(self, ce_recon, ce, temperature=0.05):
         # ce_recon, ce: (batch_size, contextual_dim)
         batch_size = ce_recon.shape[0]
         y_true = torch.arange(batch_size).to(self.device)
@@ -118,3 +109,10 @@ class SGVAE(NeuralTopicModelEvaluable):
         
         loss = F.cross_entropy(sim_score, y_true, reduction='sum')
         return loss
+    
+    def cos_loss(self, ce_recon, ce):
+        return F.cosine_embedding_loss(ce_recon, ce, target=torch.ones(len(ce)).to(self.device), reduction='sum')
+    
+    @staticmethod
+    def mse_loss(ce_recon, ce):
+        return F.mse_loss(ce_recon, ce, reduction='sum')
