@@ -147,3 +147,51 @@ class CVAE(nn.Module):
     def decode_to_ce(self, theta):
         ce_recon = self.contextual_decoder(theta)
         return ce_recon
+
+class SCDecoder(nn.Module):
+    def __init__(self, contextual_decode_dims=(50, 768), bow_decode_dims=(50, 2000)):
+        super().__init__()
+        topic_num, contextual_dim = contextual_decode_dims
+        topic_num, vocab_size = bow_decode_dims
+        self.topic_to_ce = nn.Linear(topic_num, contextual_dim, bias=False)
+        self.topic_ce_to_bow = nn.Linear(topic_num + contextual_dim, vocab_size, bias=False)
+        self.bn_decoder = nn.BatchNorm1d(vocab_size, affine=False)
+
+    def forward(self, theta):
+        ce_recon = self.topic_to_ce(theta)
+        
+        theta_ce = torch.cat([theta, ce_recon], dim=-1)
+        hid = self.topic_ce_to_bow(theta_ce)
+        bow_recon = self.bn_decoder(hid)
+
+        return ce_recon, bow_recon
+
+class SCVAE(nn.Module):
+    def __init__(self, encode_dims=(2000, 100, 100, 50), contextual_decode_dims=(50, 768), bow_decode_dims=(50, 2000),
+                 contextual_dim=768, dropout=0.2, affine=False):
+        super().__init__()
+        self.encoder = ContextualizedEncoder(encode_dims=encode_dims, contextual_dim=contextual_dim, dropout=dropout,
+                                             affine=affine)
+        self.drop_theta = nn.Dropout(dropout)
+        self.sc_decoder = SCDecoder(contextual_decode_dims=contextual_decode_dims, bow_decode_dims=bow_decode_dims)
+
+    def forward(self, x_bow, x_ce):
+        mu, log_var = self.encoder(x_bow, x_ce)
+        theta = reparameterize(mu, log_var)
+        theta = F.softmax(theta, dim=1)
+        theta = self.drop_theta(theta)
+        ce_recon, bow_recon = self.sc_decoder(theta)
+        return bow_recon, ce_recon, mu, log_var
+
+    def encode(self, x_bow, x_ce):
+        mu, _ = self.encoder(x_bow, x_ce)
+        theta = F.softmax(mu, dim=-1)
+        return theta
+
+    def decode(self, theta):
+        _, bow_recon = self.sc_decoder(theta)
+        return bow_recon
+
+    def decode_to_ce(self, theta):
+        ce_recon, _ = self.sc_decoder(theta)
+        return ce_recon

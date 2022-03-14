@@ -20,13 +20,13 @@ class BOWDataModule(LightningDataModule):
         self.data_dir = dataset_dir
         self.batch_size = batch_size
         self.dataset_name = basename(dataset_dir)
-        self.raw_json_file = join(dataset_dir, self.dataset_name + ".json")
-        self.raw_vocab_file = join(dataset_dir, self.dataset_name + ".vocab")
+        raw_json_file = join(dataset_dir, self.dataset_name + ".json")
+        raw_vocab_file = join(dataset_dir, self.dataset_name + ".vocab")
         self.num_workers = num_workers
-        if not exists(self.raw_vocab_file):
-            self.raw_vocab_file = None
+        if not exists(raw_vocab_file):
+            raw_vocab_file = None
 
-        self.dataset, self.id2token = load_bow(raw_json_file=self.raw_json_file, raw_vocab_file=self.raw_vocab_file,
+        self.dataset, self.id2token = load_bow(raw_json_file=raw_json_file, raw_vocab_file=raw_vocab_file,
                                                normalization=normalization)
         self.dataset.set_format(type='torch', columns=['bow'])
 

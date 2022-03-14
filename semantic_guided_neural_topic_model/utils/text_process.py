@@ -39,8 +39,11 @@ def simple_lemmatize(token):
 
 
 def build_bow_vocab(texts: Iterable[Iterable[str]], no_below: int = 3, no_above: float = 0.5, keep_n: int = 100000,
-                    keep_tokens: Iterable[str] = None) -> Dictionary:
-    dictionary = Dictionary((simple_lemmatize(word) for word in text if len(word.strip()) > 1) for text in texts)
+                    keep_tokens: Iterable[str] = None, is_lemmatize=True) -> Dictionary:
+    if is_lemmatize:
+        dictionary = Dictionary((simple_lemmatize(word) for word in text if len(word.strip()) > 1) for text in texts)
+    else:
+        dictionary = Dictionary(texts)
     dictionary.filter_extremes(no_below=no_below, no_above=no_above, keep_n=keep_n, keep_tokens=keep_tokens)
     dictionary.compactify()
     return dictionary

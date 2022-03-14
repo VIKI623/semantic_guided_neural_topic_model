@@ -16,13 +16,13 @@ class TextDataModule(LightningDataModule):
         super().__init__()
         self.data_dir = dataset_dir
         self.dataset_name = basename(dataset_dir)
-        self.raw_json_file = join(dataset_dir, self.dataset_name + ".json")
-        self.raw_vocab_file = join(dataset_dir, self.dataset_name + ".vocab")
+        raw_json_file = join(dataset_dir, self.dataset_name + ".json")
+        raw_vocab_file = join(dataset_dir, self.dataset_name + ".vocab")
         self.num_workers = num_workers
-        if not exists(self.raw_vocab_file):
-            self.raw_vocab_file = None
+        if not exists(raw_vocab_file):
+            raw_vocab_file = None
 
-        self.dataset, self.id2token, _ = load_text_and_vocab(raw_json_file=self.raw_json_file, raw_vocab_file=self.raw_vocab_file)
+        self.dataset, self.id2token, _ = load_text_and_vocab(raw_json_file=raw_json_file, raw_vocab_file=raw_vocab_file)
 
     def train_dataloader(self):
         return DataLoader(self.dataset, batch_size=256, shuffle=True, num_workers=self.num_workers)

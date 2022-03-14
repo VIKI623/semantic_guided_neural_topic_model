@@ -15,15 +15,15 @@ class ContextualizedDataModule(LightningDataModule):
         self.data_dir = dataset_dir
         self.batch_size = batch_size
         self.dataset_name = basename(dataset_dir)
-        self.raw_json_file = join(dataset_dir, self.dataset_name + ".json")
-        self.raw_vocab_file = join(dataset_dir, self.dataset_name + ".vocab")
+        raw_json_file = join(dataset_dir, self.dataset_name + ".json")
+        raw_vocab_file = join(dataset_dir, self.dataset_name + ".vocab")
         self.num_workers = num_workers
-        if not exists(self.raw_vocab_file):
-            self.raw_vocab_file = None
+        if not exists(raw_vocab_file):
+            raw_vocab_file = None
 
         self.dataset, self.config, self.id2token = load_bow_and_sentence_embedding(
-            sentence_bert_model_name=self.sentence_bert_model_name, raw_json_file=self.raw_json_file,
-            raw_vocab_file=self.raw_vocab_file, normalization=normalization)
+            sentence_bert_model_name=self.sentence_bert_model_name, raw_json_file=raw_json_file,
+            raw_vocab_file=raw_vocab_file, normalization=normalization)
         self.dataset.set_format(type='torch', columns=['bow', 'contextual'])
 
         self.contextual_dim = self.config.hidden_size
