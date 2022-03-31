@@ -12,3 +12,4 @@ scikit-learn
 sklearnex
 bitermplus
 munkres
+python-dateutil

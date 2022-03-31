@@ -9,7 +9,7 @@ from semantic_guided_neural_topic_model.data_modules.utils import load_bow_and_s
 
 class ContextualizedDataModule(LightningDataModule):
     def __init__(self, sentence_bert_model_name: str, dataset_dir: str, batch_size: int = 256,
-                 normalization: Optional[str] = None, num_workers: int = 4):
+                 normalization: Optional[str] = None, num_workers: int = 0):
         super().__init__()
         self.sentence_bert_model_name = sentence_bert_model_name
         self.data_dir = dataset_dir

@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.init import xavier_uniform_
-
+from semantic_guided_neural_topic_model.torch_modules.VAE import VAE, Encoder, Decoder, reparameterize
 
 class torchScholar(nn.Module):
 
@@ -28,6 +28,7 @@ class torchScholar(nn.Module):
         self.l1_beta_ci_reg = 0
         self.l2_prior_reg = 0
         self.classify_from_covars = False
+        self.n_labels = 0
 
         # create a layer for prior covariates to influence the document prior
         if self.n_prior_covars > 0:
@@ -283,3 +284,46 @@ class torchScholar(nn.Module):
             return loss.mean(), NL.mean(), KLD.mean()
         else:
             return loss, NL, KLD
+
+
+class simpleScholar(nn.Module):
+    def __init__(self, vocab_size=2000, hidden_dim=100, topic_num=50, covars_size=1940, dropout=0.2, affine=False):
+        super().__init__()
+        encode_dims = (vocab_size + covars_size, hidden_dim, hidden_dim, topic_num)
+        self.encoder = Encoder(encode_dims=encode_dims, dropout=dropout, affine=affine)
+        self.drop_theta = nn.Dropout(dropout)
+        
+        self.theta_decoder = nn.Linear(topic_num, vocab_size, bias=False)
+        self.covar_decoder = nn.Linear(covars_size, vocab_size, bias=False)
+        nn.init.xavier_uniform_(self.theta_decoder.weight)
+        nn.init.xavier_uniform_(self.covar_decoder.weight)
+        self.bn_decoder = nn.BatchNorm1d(vocab_size, affine=affine)
+
+    def forward(self, x_bow, x_covars):
+        x = torch.cat((x_bow, x_covars), dim=-1)
+        
+        mu, log_var = self.encoder(x)
+        theta = reparameterize(mu, log_var)
+        theta = F.softmax(theta, dim=-1)
+        theta = self.drop_theta(theta)
+        
+        x_bow_recon = self.theta_decoder(theta)
+        x_covar_recon = self.covar_decoder(x_covars)
+        
+        x_recon = x_bow_recon + x_covar_recon
+        x_recon = self.bn_decoder(x_recon)
+        return x_recon, mu, log_var
+
+    def encode(self, x_bow, x_covars):
+        x_covars = self.adapt_covar(x_covars)
+        x = torch.cat((x_bow, x_covars), dim=-1)
+        
+        mu, log_var = self.encoder(x)
+        theta = reparameterize(mu, log_var)
+        theta = F.softmax(theta, dim=-1)
+        return theta
+
+    def decode(self, theta):
+        x_bow_recon = self.theta_decoder(theta)
+        x_bow_recon = self.bn_decoder(x_bow_recon)
+        return x_bow_recon

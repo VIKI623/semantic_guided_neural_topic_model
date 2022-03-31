@@ -22,7 +22,7 @@ class NeuralTopicModelEvaluable(LightningModule):
         topics = self.get_topics()
         diversity = get_topics_diversity(topics)
         
-        internal_topic_coherence = get_internal_topic_coherence_batch(topics, self.reference_texts, processes=4)
+        internal_topic_coherence = get_internal_topic_coherence_batch(topics, self.reference_texts, processes=1)
         if not self.exclude_external:
             external_topic_coherence = get_external_topic_coherence_batch(topics)
             self.best_coherence_score_recorder.coherence = (topics, diversity, external_topic_coherence, internal_topic_coherence)

@@ -2,16 +2,8 @@ import torch
 from transformers import AutoModel, AutoConfig, AutoTokenizer
 from typing import Sequence
 from os.path import join
-
-pre_download_model_dir = "/data/home/zhaoxin/sentence_transformers"
-
-# Mean Pooling - Take attention mask into account for correct averaging
-def mean_pooling(model_output, attention_mask):
-    # First element of model_output contains all token embeddings
-    token_embeddings = model_output[0]
-    input_mask_expanded = attention_mask.unsqueeze(
-        -1).expand(token_embeddings.size()).float()
-    return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
+from semantic_guided_neural_topic_model.utils import pre_download_model_dir
+from semantic_guided_neural_topic_model.torch_modules.BERT import mean_pooling
 
 
 class SentenceBertModel:
@@ -48,3 +40,13 @@ class SentenceBertModel:
     def get_config(model_name):
         model_path = SentenceBertModel.get_model_path(model_name)
         return AutoConfig.from_pretrained(model_path)
+    
+    @staticmethod
+    def get_tokenizer(model_name):
+        model_path = SentenceBertModel.get_model_path(model_name)
+        return AutoTokenizer.from_pretrained(model_path)
+    
+    @staticmethod
+    def get_model(model_name):
+        model_path = SentenceBertModel.get_model_path(model_name)
+        return AutoModel.from_pretrained(model_path)

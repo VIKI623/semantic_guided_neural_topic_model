@@ -22,8 +22,6 @@ palmetto_endpoints = (
     "http://127.0.0.1:7778/service/{}?words={}",
 )
 
-palmetto_endpoint = choice(palmetto_endpoints)
-
 all_external_coherence_types = ("npmi", "cv")
 all_internal_coherence_types = ("c_v", "c_npmi")
 
@@ -46,6 +44,7 @@ def get_external_topic_coherence_batch(topics: Sequence[Sequence[str]], coherenc
     :param coherence_types: list of coherence_type, support "ca", "cp", "npmi", "cv"
     :return: coherence scores less than 1
     """
+    palmetto_endpoint = choice(palmetto_endpoints)
 
     # check legal
     for coherence_type in coherence_types:
@@ -88,7 +87,7 @@ def get_external_topic_coherence_batch(topics: Sequence[Sequence[str]], coherenc
 
 
 def get_internal_topic_coherence_batch(topics: Sequence[Sequence[str]], reference_texts: Sequence[Sequence[str]],
-                                       coherence_types: Sequence[str] = all_internal_coherence_types, processes: int = -1) \
+                                       coherence_types: Sequence[str] = all_internal_coherence_types, processes: int = 1) \
         -> Mapping[str, Any]:
 
     dictionary = Dictionary(reference_texts)
