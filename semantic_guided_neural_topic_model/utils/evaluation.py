@@ -87,7 +87,7 @@ def get_external_topic_coherence_batch(topics: Sequence[Sequence[str]], coherenc
 
 
 def get_internal_topic_coherence_batch(topics: Sequence[Sequence[str]], reference_texts: Sequence[Sequence[str]],
-                                       coherence_types: Sequence[str] = all_internal_coherence_types, processes: int = 1) \
+                                       coherence_types: Sequence[str] = all_internal_coherence_types, processes: int = 4) \
         -> Mapping[str, Any]:
 
     dictionary = Dictionary(reference_texts)
