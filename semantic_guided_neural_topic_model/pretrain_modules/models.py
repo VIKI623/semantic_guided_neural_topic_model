@@ -1,6 +1,6 @@
 import torch
 from transformers import AutoModel, AutoConfig, AutoTokenizer
-from typing import Sequence
+from typing import Sequence, Optional
 from os.path import join
 from semantic_guided_neural_topic_model.utils import pre_download_model_dir
 from semantic_guided_neural_topic_model.torch_modules.BERT import mean_pooling
@@ -13,10 +13,10 @@ class SentenceBertModel:
         self.model = AutoModel.from_pretrained(model_path).cuda()
         self.config = AutoConfig.from_pretrained(model_path)
 
-    def sentences_to_embeddings(self, sentences: Sequence[str]) -> torch.Tensor:
+    def sentences_to_embeddings(self, sentences: Sequence[str], pairs: Optional[Sequence[str]]=None) -> torch.Tensor:
         # Tokenize sentences
         encoded_input = self.tokenizer(
-            sentences, padding=True, truncation=True, return_tensors="pt")
+            sentences, pairs, padding=True, truncation=True, return_tensors="pt")
 
         # Move to cuda
         for arg, val in encoded_input.items():

@@ -19,7 +19,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description="Config arguments to run the model!")
     parser.add_argument('-dn', '--dataset_name', help='dataset name', type=str, choices=('20_news_group',
-                                                                                         '5234_event_tweets',
+                                                                                         'twitter_news_events',
                                                                                          'tag_my_news',
                                                                                          ),
                         default='20_news_group')
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     # topic_num = args.topic_num
 
     # dataset_names = ('20_news_group',
-    #                  '5234_event_tweets',
+    #                  'twitter_news_events',
     #                 #  'tag_my_news',
     #                  )
     # topic_nums = (20, 30, 50)

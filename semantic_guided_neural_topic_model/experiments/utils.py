@@ -4,7 +4,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 dataset_names = (
     '20_news_group',
     'tag_my_news',
-    '5234_event_tweets')
+    'twitter_news_events')
 topic_nums = (20, 30, 50, 75, 100)
 
 

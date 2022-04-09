@@ -78,9 +78,6 @@ class SGVAE(NeuralTopicModelEvaluable):
 
         return train_loss
 
-    def predict_step(self, batch: Any, batch_idx: int, dataloader_idx: Optional[int] = None):
-        return self(batch['bow'], batch['contextual'])
-
     def get_topics(self, top_k=10):
         self.model.eval()
         with torch.no_grad():

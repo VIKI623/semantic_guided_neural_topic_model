@@ -5,3 +5,4 @@ from .CTM import CTM
 from .SGBAT import SGBAT
 from .SCVAE import SCVAE
 from .SCHOLAR import SCHOLAR
+from .BERT import SparseMultiMetadataSBERT

@@ -9,7 +9,7 @@ from semantic_guided_neural_topic_model.data_modules.utils import load_bow
 
 class BOWDataModule(LightningDataModule):
     def __init__(self, dataset_dir: str, batch_size: int = 256, normalization: Optional[str] = None,
-                 num_workers: int = 0):
+                 num_workers: int = 4):
         """
         config data arguments
         :param dataset_dir: the directory containing {dataset_name}.json
