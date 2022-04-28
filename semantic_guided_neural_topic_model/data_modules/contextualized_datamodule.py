@@ -10,7 +10,7 @@ from semantic_guided_neural_topic_model.utils.persistence import read_json
 
 class ContextualizedDataModule(LightningDataModule):
     def __init__(self, sentence_bert_model_name: str, dataset_dir: str, batch_size: int = 256,
-                 normalization: Optional[str] = None, num_workers: int = 4):
+                 normalization: Optional[str] = None, num_workers: int = 4, text_covar=True):
         super().__init__()
         self.data_dir = dataset_dir
         self.batch_size = batch_size
@@ -21,10 +21,11 @@ class ContextualizedDataModule(LightningDataModule):
         # text covar
         raw_metadata_conf_file = join(
             dataset_dir, f"{dataset_name}_metadata_conf.json")
-        text_covar = None
-        if exists(raw_metadata_conf_file):
+        
+        if text_covar and exists(raw_metadata_conf_file):
             metadata_conf = read_json(raw_metadata_conf_file)
             text_covar = metadata_conf.get("text_covar")
+        print(f"text_covar: {text_covar}")
 
         self.num_workers = num_workers
         if not exists(raw_vocab_file):

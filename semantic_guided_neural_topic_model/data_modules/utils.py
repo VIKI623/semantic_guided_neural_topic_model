@@ -52,7 +52,7 @@ def load_text_and_vocab(raw_json_file: str = None, raw_vocab_file: str = None):
     return dataset, id2token, token2id
 
 
-def load_bow(raw_json_file: str = None, raw_vocab_file: str = None, normalization: Optional[str] = None, batch_size: int = 64):
+def load_bow(raw_json_file: str = None, raw_vocab_file: str = None, normalization: Optional[str] = None, batch_size: int = 256):
     dataset, id2token, token2id = load_text_and_vocab(
         raw_json_file, raw_vocab_file)
 
@@ -70,7 +70,7 @@ def load_bow(raw_json_file: str = None, raw_vocab_file: str = None, normalizatio
 
 
 def load_bow_and_sentence_embedding(sentence_bert_model_name: str = None, raw_json_file: str = None,
-                                    raw_vocab_file: str = None, normalization: Optional[str] = None, batch_size: int = 256,
+                                    raw_vocab_file: str = None, normalization: Optional[str] = None, batch_size: int = 64,
                                     text_covar: Optional[str] = None):
     sentence_bert_model = SentenceBertModel(sentence_bert_model_name)
     config = load_config(sentence_bert_model_name)

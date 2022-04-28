@@ -19,12 +19,17 @@ def mean_pooling(model_output, attention_mask):
 class BertTaskAdversarialHead(nn.Module):
     def __init__(self, config, num_tasks):
         super().__init__()
-        self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.classifier = nn.Linear(config.hidden_size, num_tasks)
-        nn.init.xavier_uniform_(self.classifier.weight)
+
+        for name, para in self.classifier.named_parameters():
+            if 'weight' in name:
+                nn.init.xavier_uniform_(para.data)
+            elif 'bias' in name:
+                nn.init.constant_(para.data, 0)
+            else:
+                raise NotImplementedError
 
     def forward(self, mean_pooling_hidden_states):  # [batch_size, d_model]
-        mean_pooling_hidden_states = self.dropout(mean_pooling_hidden_states)
         prediction = self.classifier(mean_pooling_hidden_states)
         return prediction
 
@@ -33,8 +38,20 @@ class BertSequenceClassificationHead(nn.Module):
     def __init__(self, config, num_labels):
         super().__init__()
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        self.classifier = nn.Linear(config.hidden_size, num_labels)
-        nn.init.xavier_uniform_(self.classifier.weight)
+        self.classifier = nn.Sequential(nn.Linear(config.hidden_size, config.hidden_size // 2),
+                                        nn.ReLU(),
+                                        nn.Dropout(config.hidden_dropout_prob),
+                                        nn.Linear(
+                                            config.hidden_size // 2, num_labels)
+                                        )
+
+        for name, para in self.classifier.named_parameters():
+            if 'weight' in name:
+                nn.init.xavier_uniform_(para.data)
+            elif 'bias' in name:
+                nn.init.constant_(para.data, 0)
+            else:
+                raise NotImplementedError
 
     def forward(self, mean_pooling_hidden_states):  # [batch_size, d_model]
         mean_pooling_hidden_states = self.dropout(mean_pooling_hidden_states)
@@ -50,6 +67,14 @@ class BertSequenceRegressionHead(nn.Module):
                                         nn.GELU(),
                                         nn.Dropout(config.hidden_dropout_prob),
                                         nn.Linear(config.hidden_size // 2, 1))
+
+        for name, para in self.classifier.named_parameters():
+            if 'weight' in name:
+                nn.init.xavier_uniform_(para.data)
+            elif 'bias' in name:
+                nn.init.constant_(para.data, 0)
+            else:
+                raise NotImplementedError
 
     def forward(self, mean_pooling_hidden_states):  # [batch_size, d_model]
         mean_pooling_hidden_states = self.dropout(mean_pooling_hidden_states)
@@ -108,9 +133,12 @@ class BertForMultiTask(nn.Module):
         for param in self.bert.parameters():
             param.requires_grad = False
 
-    def unfreeze_bert(self):
-        for param in self.bert.parameters():
-            param.requires_grad = True
+    def unfreeze_bert(self, keep_freeze_args=None):
+        for name, param in self.bert.named_parameters():
+            if keep_freeze_args and any(n in name for n in keep_freeze_args):
+                param.requires_grad = False
+            else:
+                param.requires_grad = True
 
 
 if __name__ == "__main__":

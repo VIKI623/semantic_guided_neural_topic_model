@@ -1,3 +1,3 @@
-sudo docker run -p 7777:8080 -m 8G --memory-swap -1 -d -v /data/home/zhaoxin/deployment/Palmetto/to/indexes/:/usr/local/indexes/:ro dicegroup/palmetto-service
-sudo docker run -p 7778:8080 -m 8G --memory-swap -1 -d -v /data/home/zhaoxin/deployment/Palmetto/to/indexes/:/usr/local/indexes/:ro dicegroup/palmetto-service
-sudo docker run -p 7779:8080 -m 8G --memory-swap -1 -d -v /data/home/zhaoxin/deployment/Palmetto/to/indexes/:/usr/local/indexes/:ro dicegroup/palmetto-service
+sudo docker run -p 7777:8080 -m 12G --memory-swap -1 -d -v /data/home/zhaoxin/deployment/Palmetto/to/indexes/:/usr/local/indexes/:ro dicegroup/palmetto-service
+sudo docker run -p 7778:8080 -m 12G --memory-swap -1 -d -v /data/home/zhaoxin/deployment/Palmetto/to/indexes/:/usr/local/indexes/:ro dicegroup/palmetto-service
+sudo docker run -p 7779:8080 -m 12G --memory-swap -1 -d -v /data/home/zhaoxin/deployment/Palmetto/to/indexes/:/usr/local/indexes/:ro dicegroup/palmetto-service

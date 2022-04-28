@@ -20,6 +20,7 @@ from sklearn.cluster import k_means
 palmetto_endpoints = (
     "http://127.0.0.1:7777/service/{}?words={}",
     "http://127.0.0.1:7778/service/{}?words={}",
+    "http://127.0.0.1:7779/service/{}?words={}",
 )
 
 all_external_coherence_types = ("npmi", "cv")

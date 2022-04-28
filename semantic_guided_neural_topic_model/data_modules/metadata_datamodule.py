@@ -44,12 +44,6 @@ class MetadataDataModuleBase(LightningDataModule):
         self.discrete_covar_mappings = load_discrete_covar_mappings(
             discrete_covar_mapping_files=discrete_covar_mapping_files)
 
-    def train_dataloader(self):
-        raise NotImplementedError
-
-    def val_dataloader(self):
-        raise NotImplementedError
-
 
 class MetadataDataModuleForScholar(MetadataDataModuleBase):
     def __init__(self, dataset_dir: str, batch_size: int = 256, normalization: Optional[str] = None,
@@ -62,6 +56,7 @@ class MetadataDataModuleForScholar(MetadataDataModuleBase):
         """
         super().__init__(dataset_dir=dataset_dir)
 
+        dataset_name = basename(dataset_dir)
         self.covar_size = len(self.continuous_covars) + \
             sum(len(self.discrete_covar_mappings[discrete_covar]["token2id"])
                 for discrete_covar in self.discrete_covars) + 1
@@ -92,11 +87,12 @@ class MetadataDataModuleForScholar(MetadataDataModuleBase):
 
 class MetadataDataModuleForBERT(MetadataDataModuleBase):
     def __init__(self, dataset_dir: str, batch_size: int = 32, num_workers: int = 4,
-                 model_name='paraphrase-distilroberta-base-v2'):
+                 model_name='paraphrase-distilroberta-base-v2', have_text_covar=True):
 
         super().__init__(dataset_dir=dataset_dir)
 
-        have_text_covar = self.text_covar is not None
+        if have_text_covar:
+            have_text_covar = self.text_covar is not None
         names = self.continuous_covars + self.discrete_covars
 
         self.batch_size = batch_size
@@ -114,7 +110,6 @@ class MetadataDataModuleForBERT(MetadataDataModuleBase):
         for covar in self.continuous_covars:
             dataset = datasets.load_dataset(
                 dataset_dir, name=covar, split=datasets.Split.TRAIN)
-
             dataset = load_embedding_for_bert(
                 dataset=dataset, tokenizer=tokenizer, have_text_covar=have_text_covar, have_remove_columns=True)
             covar2dataset[covar], self.covar2scaler[covar] = load_continuous_covar_for_bert(
@@ -141,6 +136,8 @@ class MetadataDataModuleForBERT(MetadataDataModuleBase):
         # set format
         for covar, dataset in covar2dataset.items():
             dataset.set_format(type="torch", columns=dataset.column_names)
+            print(f"{covar}: {len(dataset)}")
+        print(f"have_text_covar: {have_text_covar}")
 
         self.dataset = ConcatDataset(covar2dataset.values())
 

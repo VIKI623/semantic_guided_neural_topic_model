@@ -9,6 +9,7 @@ import torch
 import torch.nn.functional as F
 from semantic_guided_neural_topic_model.lightning_modules.ProdLDA import get_topics
 
+
 class SparseMultiMetadataSBERT(LightningModule):
     def __init__(self, model_name: str = 'paraphrase-distilroberta-base-v2', continuous_covars: Sequence[str] = None,
                  discrete_covar2class_num: Mapping[str, int] = None, warmup_proportion: float = 0.1, epoch_steps: int = 10000,
@@ -36,6 +37,10 @@ class SparseMultiMetadataSBERT(LightningModule):
             continuous_covars) + len(discrete_covar2class_num)
 
         self.bert_encode_keys = bert_encode_keys
+        self.no_tuned_args = ['task_adversarial_head',
+                              'embeddings', 'layer.0', 'layer.1', 'layer.2', 'layer.3']
+        # self.no_tuned_args = ['task_adversarial_head', 'embeddings']
+        self.discr_lr = False
 
         # train epoch cut
         self.task_epoch = task_epoch
@@ -64,17 +69,64 @@ class SparseMultiMetadataSBERT(LightningModule):
 
         # p2: union optimizer & scheduler
         no_decay = ["bias", "LayerNorm.weight"]
-        optimizer_grouped_parameters = [
-            {
-                "params": [p for n, p in self.model.named_parameters() if not any(nd in n for nd in no_decay) and ('task_adversarial_head' not in n)],
-                "weight_decay": 0.01,
-            },
-            {
-                "params": [p for n, p in self.model.named_parameters() if any(nd in n for nd in no_decay) and ('task_adversarial_head' not in n)],
-                "weight_decay": 0.0,
-            },
-        ]
-        union_optimizer = AdamW(optimizer_grouped_parameters, lr=2e-5)
+        lr = 2e-5
+        if self.discr_lr:
+            group1 = ['layer.0.', 'layer.1.', 'layer.2.']
+            group2 = ['layer.3.', 'layer.4.']
+            group3 = ['layer.5.']
+            group_all = group1 + group2 + group3
+            optimizer_grouped_parameters = [
+                {
+                    "params": [p for n, p in self.model.named_parameters() if not any(nd in n for nd in no_decay) and not any(nd in n for nd in group_all) and not any(nd in n for nd in self.no_tuned_args)],
+                    "weight_decay": 0.01,
+                },
+                {
+                    "params": [p for n, p in self.model.named_parameters() if not any(nd in n for nd in no_decay) and any(nd in n for nd in group1) and not any(nd in n for nd in self.no_tuned_args)],
+                    "weight_decay": 0.01,
+                    "lr": lr / 4
+                },
+                {
+                    "params": [p for n, p in self.model.named_parameters() if not any(nd in n for nd in no_decay) and any(nd in n for nd in group2) and not any(nd in n for nd in self.no_tuned_args)],
+                    "weight_decay": 0.01,
+                    "lr": lr / 2
+                },
+                {
+                    "params": [p for n, p in self.model.named_parameters() if not any(nd in n for nd in no_decay) and any(nd in n for nd in group3) and not any(nd in n for nd in self.no_tuned_args)],
+                    "weight_decay": 0.01,
+                    "lr": lr
+                },
+                {
+                    "params": [p for n, p in self.model.named_parameters() if any(nd in n for nd in no_decay) and not any(nd in n for nd in group_all) and not any(nd in n for nd in self.no_tuned_args)],
+                    "weight_decay": 0.0,
+                },
+                {
+                    "params": [p for n, p in self.model.named_parameters() if any(nd in n for nd in no_decay) and any(nd in n for nd in group1) and not any(nd in n for nd in self.no_tuned_args)],
+                    "weight_decay": 0.0,
+                    "lr": lr / 4
+                },
+                {
+                    "params": [p for n, p in self.model.named_parameters() if any(nd in n for nd in no_decay) and any(nd in n for nd in group2) and not any(nd in n for nd in self.no_tuned_args)],
+                    "weight_decay": 0.0,
+                    "lr": lr / 2
+                },
+                {
+                    "params": [p for n, p in self.model.named_parameters() if any(nd in n for nd in no_decay) and any(nd in n for nd in group3) and not any(nd in n for nd in self.no_tuned_args)],
+                    "weight_decay": 0.0,
+                    "lr": lr
+                },
+            ]
+        else:
+            optimizer_grouped_parameters = [
+                {
+                    "params": [p for n, p in self.model.named_parameters() if not any(nd in n for nd in no_decay) and not any(nd in n for nd in self.no_tuned_args)],
+                    "weight_decay": 0.01,
+                },
+                {
+                    "params": [p for n, p in self.model.named_parameters() if any(nd in n for nd in no_decay) and not any(nd in n for nd in self.no_tuned_args)],
+                    "weight_decay": 0.0,
+                },
+            ]
+        union_optimizer = AdamW(optimizer_grouped_parameters, lr=lr)
 
         union_total_steps = self.union_epoch * self.epoch_steps / self.task_num
         union_scheduler = get_linear_schedule_with_warmup(
@@ -86,7 +138,7 @@ class SparseMultiMetadataSBERT(LightningModule):
         union_adv_total_steps = self.union_epoch * self.epoch_steps / self.task_num
 
         union_adv_optimizer = AdamW([p for n, p in self.model.named_parameters(
-        ) if 'task_adversarial_head' in n], lr=2e-5)
+        ) if 'task_adversarial_head' in n], lr=lr)
         union_adv_scheduler = get_linear_schedule_with_warmup(
             union_adv_optimizer,
             num_warmup_steps=self.warmup_proportion * union_adv_total_steps,
@@ -118,7 +170,7 @@ class SparseMultiMetadataSBERT(LightningModule):
             self.adv_scheduler = None
 
         elif self.trainer.current_epoch < self.task_epoch + self.union_epoch:
-            self.model.unfreeze_bert()
+            self.model.unfreeze_bert(keep_freeze_args=self.no_tuned_args)
             self.main_optimizer = union_optimizer
             self.main_scheduler = union_scheduler
             self.adv_optimizer = union_adv_optimizer
