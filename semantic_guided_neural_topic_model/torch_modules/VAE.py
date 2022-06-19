@@ -116,7 +116,7 @@ class BOWDecoder(nn.Module):
         return hid
 
 
-class CVAE(nn.Module):
+class SECT(nn.Module):
     def __init__(self, encode_dims=(2000, 100, 100, 50), contextual_decode_dims=(50, 768), bow_decode_dims=(50, 2000),
                  contextual_dim=768, dropout=0.2, affine=False):
         super().__init__()
@@ -194,4 +194,89 @@ class SCVAE(nn.Module):
 
     def decode_to_ce(self, theta):
         ce_recon, _ = self.sc_decoder(theta)
+        return ce_recon
+    
+
+class EmbeddingDecoder(nn.Module):
+    def __init__(self, contextual_decode_dims=(50, 768)):
+        super().__init__()
+        topic_num, contextual_dim = contextual_decode_dims
+        self.topic_to_ce = nn.Linear(topic_num, contextual_dim, bias=False)
+
+    def forward(self, theta):
+        ce_recon = self.topic_to_ce(theta)
+        
+        return ce_recon
+    
+    def decode(self, theta):
+        ce_recon = self.topic_to_ce(theta)
+
+        return ce_recon
+    
+
+class BoWsDecoder(nn.Module):
+    def __init__(self, bow_decode_dims=(50, 2000), contextual_decode_dims=(50, 768), dropout=0.2):
+        super().__init__()
+        topic_num, vocab_size = bow_decode_dims
+        topic_num, contextual_dim = contextual_decode_dims
+        
+        self.adapt_embedding = nn.Linear(contextual_dim, topic_num)
+        self.dropout_adpat_embedding = nn.Dropout(dropout)
+        self.topic_to_ce = EmbeddingDecoder(contextual_decode_dims=contextual_decode_dims)
+        
+        self.topic_adapt_ce_to_bow = nn.Sequential(
+            nn.Linear(topic_num * 2, topic_num),
+            nn.Softplus(),
+            nn.Linear(topic_num, vocab_size),
+            nn.BatchNorm1d(vocab_size, affine=False)
+        )
+
+    def forward(self, theta, ce):
+        ce_recon = self.topic_to_ce(theta)
+        
+        adapt_ce = self.adapt_embedding(ce)
+        adapt_ce_dropout = self.dropout_adpat_embedding(adapt_ce)
+        
+        theta_adapt_ce = torch.cat([theta, adapt_ce_dropout], dim=-1)
+        bow_recon = self.topic_adapt_ce_to_bow(theta_adapt_ce)
+        
+        return ce_recon, bow_recon
+    
+    def decode(self, theta):
+        ce_recon = self.topic_to_ce.decode(theta)
+        adapt_ce_recon = self.adapt_embedding(ce_recon)
+        
+        theta_adapt_ce = torch.cat([theta, adapt_ce_recon], dim=-1)
+        bow_recon = self.topic_adapt_ce_to_bow(theta_adapt_ce)
+        
+        return ce_recon, bow_recon
+
+class SECT(nn.Module):
+    def __init__(self, encode_dims=(2000, 100, 100, 50), contextual_decode_dims=(50, 768), bow_decode_dims=(50, 2000),
+                 contextual_dim=768, dropout=0.2, affine=False):
+        super().__init__()
+        self.encoder = ContextualizedEncoder(encode_dims=encode_dims, contextual_dim=contextual_dim, dropout=dropout,
+                                             affine=affine)
+        self.drop_theta = nn.Dropout(dropout)
+        self.decoder = BoWsDecoder(contextual_decode_dims=contextual_decode_dims, bow_decode_dims=bow_decode_dims, dropout=dropout)
+
+    def forward(self, x_bow, x_ce):
+        mu, log_var = self.encoder(x_bow, x_ce)
+        theta = reparameterize(mu, log_var)
+        theta = F.softmax(theta, dim=1)
+        theta = self.drop_theta(theta)
+        ce_recon, bow_recon = self.decoder(theta, x_ce)
+        return bow_recon, ce_recon, mu, log_var
+
+    def encode(self, x_bow, x_ce):
+        mu, _ = self.encoder(x_bow, x_ce)
+        theta = F.softmax(mu, dim=-1)
+        return theta
+
+    def decode(self, theta):
+        _, bow_recon = self.decoder.decode(theta)
+        return bow_recon
+
+    def decode_to_ce(self, theta):
+        ce_recon, _ = self.decoder.decode(theta)
         return ce_recon

@@ -20,7 +20,7 @@ if __name__ == '__main__':
         description="Config arguments to run the model!")
     parser.add_argument('-dn', '--dataset_name', help='dataset name', type=str, choices=('20_news_group',
                                                                                          'twitter_news_events',
-                                                                                         'tag_my_news',
+                                                                                         'dbpedia_14',
                                                                                          ),
                         default='20_news_group')
     parser.add_argument('-bs', '--batch_size',
@@ -54,13 +54,13 @@ if __name__ == '__main__':
 
     # dataset_names = ('20_news_group',
     #                  'twitter_news_events',
-    #                 #  'tag_my_news',
+    #                 #  'dbpedia_14',
     #                  )
     # topic_nums = (20, 30, 50)
     # topic_nums = (75, 100)
     
-    dataset_names = ('tag_my_news',)
-    topic_nums = (100, )
+    dataset_names = ('dbpedia_14',)
+    topic_nums = (20, 30, 50, 75, 100)
 
     for dataset_name in dataset_names:
         for topic_num in topic_nums:
